@@ -5,17 +5,29 @@
     "DeployASG": {
       "Type": "Task",
       "Resource": "arn:aws:lambda:us-east-1:123456789012:function:DeployASGLambda",
+      "Parameters": {
+        "param1": "value1",
+        "param2": "value2"
+      },
       "Next": "InitializeCount"
     },
     "InitializeCount": {
       "Type": "Pass",
-      "Result": 0,
-      "ResultPath": "$.count",
+      "Result": {
+        "count": 0,
+        "instanceCount": 0
+      },
+      "ResultPath": "$",
       "Next": "GetNumberOfInstances"
     },
     "GetNumberOfInstances": {
       "Type": "Task",
       "Resource": "arn:aws:lambda:us-east-1:123456789012:function:GetNumberOfInstancesLambda",
+      "Parameters": {
+        "param1": "value1",
+        "param2": "value2"
+      },
+      "ResultPath": "$.instanceCount",
       "Next": "CheckInstances"
     },
     "CheckInstances": {
@@ -23,7 +35,7 @@
       "Choices": [
         {
           "Variable": "$.instanceCount",
-          "NumericEquals": 2,  // Replace with the minimum number of instances required
+          "NumericEqualsPath": "$.runningInstancesCount",
           "Next": "Success"
         },
         {
@@ -44,12 +56,16 @@
     },
     "Wait": {
       "Type": "Wait",
-      "Seconds": 30,  // Adjust the wait time as needed
+      "Seconds": 30,
       "Next": "GetNumberOfInstances"
     },
     "DeleteASG": {
       "Type": "Task",
       "Resource": "arn:aws:lambda:us-east-1:123456789012:function:DeleteASGLambda",
+      "Parameters": {
+        "param1": "value1",
+        "param2": "value2"
+      },
       "Next": "Fail"
     },
     "Success": {
