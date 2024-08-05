@@ -1,13 +1,41 @@
 {
   "Comment": "A state machine that deploys an ASG and ensures minimum instances are running",
-  "StartAt": "DeployASG",
+  "StartAt": "SetDefaults",
   "States": {
+    "SetDefaults": {
+      "Type": "Pass",
+      "Result": {
+        "param1": "default_value1",
+        "param2": "default_value2"
+      },
+      "ResultPath": "$.defaults",
+      "Next": "MergeParameters"
+    },
+    "MergeParameters": {
+      "Type": "Pass",
+      "Parameters": {
+        "param1.$": "$.input.param1",
+        "param2.$": "$.input.param2",
+        "defaults.$": "$.defaults"
+      },
+      "ResultPath": "$.merged",
+      "Next": "ApplyDefaults"
+    },
+    "ApplyDefaults": {
+      "Type": "Pass",
+      "Parameters": {
+        "param1.$": "States.JsonMerge($.defaults, $.merged.param1, false)",
+        "param2.$": "States.JsonMerge($.defaults, $.merged.param2, false)"
+      },
+      "ResultPath": "$.parameters",
+      "Next": "DeployASG"
+    },
     "DeployASG": {
       "Type": "Task",
       "Resource": "arn:aws:lambda:us-east-1:123456789012:function:DeployASGLambda",
       "Parameters": {
-        "param1": "value1",
-        "param2": "value2"
+        "param1.$": "$.parameters.param1",
+        "param2.$": "$.parameters.param2"
       },
       "Next": "InitializeCount"
     },
@@ -24,8 +52,8 @@
       "Type": "Task",
       "Resource": "arn:aws:lambda:us-east-1:123456789012:function:GetNumberOfInstancesLambda",
       "Parameters": {
-        "param1": "value1",
-        "param2": "value2"
+        "param1.$": "$.parameters.param1",
+        "param2.$": "$.parameters.param2"
       },
       "ResultPath": "$.instanceCount",
       "Next": "CheckInstances"
@@ -62,10 +90,6 @@
     "DeleteASG": {
       "Type": "Task",
       "Resource": "arn:aws:lambda:us-east-1:123456789012:function:DeleteASGLambda",
-      "Parameters": {
-        "param1": "value1",
-        "param2": "value2"
-      },
       "Next": "Fail"
     },
     "Success": {
