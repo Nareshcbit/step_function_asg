@@ -1,0 +1,64 @@
+{
+  "Comment": "A state machine that deploys an ASG and ensures minimum instances are running",
+  "StartAt": "DeployASG",
+  "States": {
+    "DeployASG": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:123456789012:function:DeployASGLambda",
+      "Next": "InitializeCount"
+    },
+    "InitializeCount": {
+      "Type": "Pass",
+      "Result": 0,
+      "ResultPath": "$.count",
+      "Next": "GetNumberOfInstances"
+    },
+    "GetNumberOfInstances": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:123456789012:function:GetNumberOfInstancesLambda",
+      "Next": "CheckInstances"
+    },
+    "CheckInstances": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.instanceCount",
+          "NumericEquals": 2,  // Replace with the minimum number of instances required
+          "Next": "Success"
+        },
+        {
+          "Variable": "$.count",
+          "NumericGreaterThanEquals": 10,
+          "Next": "DeleteASG"
+        }
+      ],
+      "Default": "IncrementCount"
+    },
+    "IncrementCount": {
+      "Type": "Pass",
+      "Result": {
+        "count.$": "$.count + 1"
+      },
+      "ResultPath": "$.count",
+      "Next": "Wait"
+    },
+    "Wait": {
+      "Type": "Wait",
+      "Seconds": 30,  // Adjust the wait time as needed
+      "Next": "GetNumberOfInstances"
+    },
+    "DeleteASG": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:123456789012:function:DeleteASGLambda",
+      "Next": "Fail"
+    },
+    "Success": {
+      "Type": "Succeed"
+    },
+    "Fail": {
+      "Type": "Fail",
+      "Error": "InstanceDeploymentFailed",
+      "Cause": "The ASG did not reach the minimum number of running instances"
+    }
+  }
+}
